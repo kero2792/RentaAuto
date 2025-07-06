@@ -15,6 +15,29 @@ export interface RentaAPI {
   fechaFinal: string
 }
 
+export interface Cliente {
+  id?: number
+  nombres: string
+  apellidos: string
+  telefono: string
+  direccion: string
+  password: string
+}
+
+export interface ClienteForm {
+  nombres: string
+  apellidos: string
+  telefono: string
+  direccion: string
+  password: string
+  confirmPassword: string
+}
+
+export interface LoginForm {
+  email: string  // This field now stores phone number or name
+  password: string
+}
+
 export type Columna<T> = {
   key: keyof T
   header: string

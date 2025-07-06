@@ -1,34 +1,55 @@
 import React, { useState } from 'react';
 import { Box, Paper, TextField, Button, Typography, Link } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
-
-import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom'
-
-
-const handlesignupClick = () => {
-    navigate('/signup')
-  }
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { loginCliente } from '../libs/Api/rentaRequest';
+import type { LoginForm } from '../types';
 
 interface LoginProps {
-    onLogin?: (username: string, password: string) => void;
+    onLogin?: (email: string, password: string) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
+    const navigate = useNavigate();
+    const [form, setForm] = useState<LoginForm>({
+        email: '',
+        password: ''
+    });
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setForm({ ...form, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!username || !password) {
-            setError('Please enter both username and password.');
+        setError('');
+        setIsLoading(true);
+
+        if (!form.email || !form.password) {
+            setError('Por favor, ingresa tu teléfono/nombre y contraseña.');
+            setIsLoading(false);
             return;
         }
-        setError('');
-        if (onLogin) {
-            onLogin(username, password);
+
+        try {
+            // Intentar autenticación
+            await loginCliente(form);
+            
+            // Si la autenticación es exitosa
+            if (onLogin) {
+                onLogin(form.email, form.password);
+            }
+            
+            // Redirigir al dashboard del cliente
+            navigate('/dashboard-cliente');
+            
+        } catch (error) {
+            setError('Teléfono/nombre o contraseña incorrectos. Por favor, intenta nuevamente.');
+            console.error('Error en el login:', error);
+        } finally {
+            setIsLoading(false);
         }
-        // Add your authentication logic here
     };
 
     return (
@@ -39,22 +60,29 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 </Typography>
                 <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
                     <TextField
-                        label="Usuario"
+                        label="Teléfono o Nombre"
+                        name="email"
                         variant="outlined"
                         fullWidth
                         margin="normal"
-                        value={username}
-                        onChange={e => setUsername(e.target.value)}
+                        value={form.email}
+                        onChange={handleChange}
                         autoFocus
+                        required
+                        disabled={isLoading}
+                        helperText="Ingresa tu número de teléfono o nombre"
                     />
                     <TextField
                         label="Contraseña"
+                        name="password"
                         type="password"
                         variant="outlined"
                         fullWidth
                         margin="normal"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
+                        value={form.password}
+                        onChange={handleChange}
+                        required
+                        disabled={isLoading}
                     />
                     {error && (
                         <Typography color="error" sx={{ mt: 1, mb: 1 }}>
@@ -67,8 +95,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         color="primary"
                         fullWidth
                         sx={{ mt: 2 }}
+                        disabled={isLoading}
                     >
-                        Entrar
+                        {isLoading ? 'Iniciando sesión...' : 'Entrar'}
                     </Button>
                     <Box sx={{ mt: 3, textAlign: 'center' }}>
                         <Link component={RouterLink} to="/signup" underline="hover">

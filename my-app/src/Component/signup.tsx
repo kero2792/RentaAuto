@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Box, Paper, TextField, Button, Typography, Link, InputLabel, FormControl, OutlinedInput } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Box, Paper, TextField, Button, Typography, Link } from '@mui/material';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { registerCliente } from '../libs/Api/rentaRequest';
+import type { ClienteForm } from '../types';
 
 const Signup: React.FC = () => {
-  const [form, setForm] = useState({
+  const navigate = useNavigate();
+  const [form, setForm] = useState<ClienteForm>({
     nombres: '',
     apellidos: '',
     telefono: '',
@@ -11,41 +14,61 @@ const Signup: React.FC = () => {
     password: '',
     confirmPassword: '',
   });
-  const [docIdentidad, setDocIdentidad] = useState<File | null>(null);
-  const [carnetConducir, setCarnetConducir] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (f: File | null) => void) => {
-    const file = e.target.files && e.target.files[0];
-    if (file && !['image/jpeg', 'image/png'].includes(file.type)) {
-      setError('Solo se permiten imágenes JPG o PNG.');
-      setter(null);
-      return;
-    }
-    setter(file || null);
-    setError('');
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsLoading(true);
+
     // Validaciones básicas
-    if (!form.nombres || !form.apellidos || !form.telefono || !form.direccion || !form.password || !form.confirmPassword || !docIdentidad || !carnetConducir) {
-      setError('Por favor, completa todos los campos y sube los archivos requeridos.');
+    if (!form.nombres || !form.apellidos || !form.telefono || !form.direccion || !form.password || !form.confirmPassword) {
+      setError('Por favor, completa todos los campos requeridos.');
+      setIsLoading(false);
       return;
     }
+
     if (form.password !== form.confirmPassword) {
       setError('Las contraseñas no coinciden.');
+      setIsLoading(false);
       return;
     }
-    setSuccess('¡Registro exitoso!');
-    // Aquí iría la lógica para enviar los datos al backend
+
+    if (form.password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Enviar datos al backend
+      await registerCliente({
+        nombres: form.nombres,
+        apellidos: form.apellidos,
+        telefono: form.telefono,
+        direccion: form.direccion,
+        password: form.password
+      });
+      setSuccess('¡Registro exitoso! Redirigiendo al login...');
+      
+      // Redirigir al login después de 2 segundos
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      
+    } catch (error) {
+      setError('Error en el registro. Por favor, intenta nuevamente.');
+      console.error('Error en el registro:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,6 +87,7 @@ const Signup: React.FC = () => {
             value={form.nombres}
             onChange={handleChange}
             required
+            disabled={isLoading}
           />
           <TextField
             label="Apellidos"
@@ -74,6 +98,7 @@ const Signup: React.FC = () => {
             value={form.apellidos}
             onChange={handleChange}
             required
+            disabled={isLoading}
           />
           <TextField
             label="Número de teléfono"
@@ -84,6 +109,7 @@ const Signup: React.FC = () => {
             value={form.telefono}
             onChange={handleChange}
             required
+            disabled={isLoading}
           />
           <TextField
             label="Dirección"
@@ -94,35 +120,8 @@ const Signup: React.FC = () => {
             value={form.direccion}
             onChange={handleChange}
             required
+            disabled={isLoading}
           />
-          <Box sx={{ mt: 2 }}>
-            <InputLabel>Documento de identidad (JPG o PNG)</InputLabel>
-            <OutlinedInput
-              type="file"
-              inputProps={{ accept: 'image/jpeg,image/png' }}
-              onChange={e => handleFileChange(e, setDocIdentidad)}
-              fullWidth
-            />
-            {docIdentidad && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Archivo seleccionado: {docIdentidad.name}
-              </Typography>
-            )}
-          </Box>
-          <Box sx={{ mt: 2 }}>
-            <InputLabel>Carnet de conducir (JPG o PNG)</InputLabel>
-            <OutlinedInput
-              type="file"
-              inputProps={{ accept: 'image/jpeg,image/png' }}
-              onChange={e => handleFileChange(e, setCarnetConducir)}
-              fullWidth
-            />
-            {carnetConducir && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Archivo seleccionado: {carnetConducir.name}
-              </Typography>
-            )}
-          </Box>
           <TextField
             label="Contraseña"
             name="password"
@@ -133,6 +132,8 @@ const Signup: React.FC = () => {
             value={form.password}
             onChange={handleChange}
             required
+            disabled={isLoading}
+            helperText="Mínimo 6 caracteres"
           />
           <TextField
             label="Confirmar contraseña"
@@ -144,6 +145,7 @@ const Signup: React.FC = () => {
             value={form.confirmPassword}
             onChange={handleChange}
             required
+            disabled={isLoading}
           />
           {error && (
             <Typography color="error" sx={{ mt: 2 }}>
@@ -161,8 +163,9 @@ const Signup: React.FC = () => {
             color="primary"
             fullWidth
             sx={{ mt: 3 }}
+            disabled={isLoading}
           >
-            Crear cuenta
+            {isLoading ? 'Creando cuenta...' : 'Crear cuenta'}
           </Button>
           <Box sx={{ mt: 2, textAlign: 'center' }}>
             <Link component={RouterLink} to="/login" underline="hover">
